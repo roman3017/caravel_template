@@ -24,6 +24,9 @@ jobs:
       - name: Install The Precheck
         run: sh ${GITHUB_WORKSPACE}/.github/scripts/precheck/precheckBuild.sh
 
+      - name: Sanitize The Precheck
+        run: sed -i 's/yaml manifest makefile consistency/makefile/g' ${GITHUB_WORKSPACE}/.github/scripts/precheck/run-precheck.sh
+
       - name: Run The Precheck
         run: bash ${GITHUB_WORKSPACE}/.github/scripts/precheck/run-precheck.sh
   
