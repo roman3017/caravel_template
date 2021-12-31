@@ -15,15 +15,24 @@
 # SPDX-License-Identifier: Apache-2.0
 
 export UPRJ_ROOT=$(pwd)
-export CARAVEL_ROOT=$(pwd)/caravel
 cd ..
 export PDK_ROOT=$(pwd)/pdks
+export CARAVEL_ROOT=$(pwd)/caravel
 export IMAGE_NAME=efabless/openlane:$OPENLANE_TAG
 
 cd $UPRJ_ROOT
 
+# Install full version of caravel
+git clone https://github.com/efabless/caravel --depth 1 $CARAVEL_ROOT
+
 LOG_FILE=out.log
 docker run -v $UPRJ_ROOT:$UPRJ_ROOT -v $PDK_ROOT:$PDK_ROOT -v $CARAVEL_ROOT:$CARAVEL_ROOT -e UPRJ_ROOT=$UPRJ_ROOT -e PDK_ROOT=$PDK_ROOT -e CARAVEL_ROOT=$CARAVEL_ROOT -u $(id -u $USER):$(id -g $USER) $IMAGE_NAME bash -c "cd $UPRJ_ROOT; export USER_ID=$USER_ID; make xor-wrapper | tee $LOG_FILE;"
+
+if [ ! -f $LOG_FILE ] 
+then
+    echo "Log file [$LOG_FILE] DOES NOT exists." 
+    exit 3 
+fi
 
 cnt=$(grep -oP '(?<=Total XOR differences = )[0-9]+' $LOG_FILE)
 

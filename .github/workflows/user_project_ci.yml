@@ -1,95 +1,56 @@
 name: CI
-
-
 on:
-    # Runs on Every Push
     push:
-    # Runs on Pull Requests
     pull_request:
     workflow_dispatch:
-
 jobs:
   precheck:
     runs-on: ubuntu-latest
     timeout-minutes: 720
     steps:
       - uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
       - name: Install The Precheck
         run: sh ${GITHUB_WORKSPACE}/.github/scripts/precheck/precheckBuild.sh
-
       - name: Sanitize The Precheck
         run: sed -i 's/yaml manifest makefile consistency/makefile/g' ${GITHUB_WORKSPACE}/.github/scripts/precheck/run-precheck.sh
-
       - name: Run The Precheck
         run: bash ${GITHUB_WORKSPACE}/.github/scripts/precheck/run-precheck.sh
-  
   precheck-drc:
     timeout-minutes: 720
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
       - name: Install The Precheck
         run: sh ${GITHUB_WORKSPACE}/.github/scripts/precheck/precheckBuild.sh
-
       - name: Run The Precheck
         run: bash ${GITHUB_WORKSPACE}/.github/scripts/precheck/run-precheck-drc.sh
-  
   dv_rtl:
     runs-on: ubuntu-latest
+    env: 
+      OPENLANE_TAG: 2021.12.17_05.07.41
+      CARAVEL_TAG: mpw-3a
+      MAGIC_VERSION: 8.3.209
     steps:
        - uses: actions/checkout@v2
-      
-       - name: Set up QEMU
-         uses: docker/setup-qemu-action@v1
-
-       - name: Set up Docker Buildx
-         uses: docker/setup-buildx-action@v1
-        
-       - name: Install The PDK
-         run: bash ${GITHUB_WORKSPACE}/.github/scripts/dv/pdkBuild.sh
-         env: 
-          OPENLANE_TAG: 2021.09.16_03.28.21
-          
-       - name: Install The Dockerized DV Setup
-         run:  docker pull efabless/dv_setup:latest
-       
+       - name: install deps
+         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-install-magic.sh
+       - name: Install Caravel
+         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-pdk-build.sh
        - name: Run DV tests
-         # Run test number 0,1,2,3,4 in one job                            <test-ids>   <sim-mode>
-         run: bash ${GITHUB_WORKSPACE}/.github/scripts/dv/run-dv-wrapper.sh 0,1,2,3,4      RTL
-
+         # Run test number 0,1,2,3,4 in one job                           <test-ids>   <sim-mode>
+         run: bash ${GITHUB_WORKSPACE}/.github/scripts/dv/run-dv-tests.sh 0,1,2        RTL
   dv_gl:
     runs-on: ubuntu-latest
+    env: 
+      OPENLANE_TAG: 2021.12.17_05.07.41
+      CARAVEL_TAG: mpw-3a
+      MAGIC_VERSION: 8.3.209
     steps:
        - uses: actions/checkout@v2
-      
-       - name: Set up QEMU
-         uses: docker/setup-qemu-action@v1
-
-       - name: Set up Docker Buildx
-         uses: docker/setup-buildx-action@v1
-        
-       - name: Install The PDK
-         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/dv/pdkBuild.sh
-         env: 
-          OPENLANE_TAG: 2021.09.16_03.28.21
-          
-       - name: Install The Dockerized DV Setup
-         run:  docker pull efabless/dv_setup:latest
-       
+       - name: install deps
+         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-install-magic.sh
+       - name: Install Caravel
+         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-pdk-build.sh
        - name: Run DV tests
-         # Run test number 0,1,2,3,4 in one job                             <test-ids>   <sim-mode>
-         run: bash ${GITHUB_WORKSPACE}/.github/scripts/dv/run-dv-wrapper.sh 0,1,2,3,4      GL
+         # Run test number 0,1,2,3,4 in one job                           <test-ids>   <sim-mode>
+         run: bash ${GITHUB_WORKSPACE}/.github/scripts/dv/run-dv-tests.sh 0,1,2        GL

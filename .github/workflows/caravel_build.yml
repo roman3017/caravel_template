@@ -1,73 +1,49 @@
-name: Caravel Build
-
-
+name: Caravel build
 on:
-    # Runs on Every Push
+    create:
+      tag: [ t* ]
     push:
-    # Runs on Pull Requests
+      branches: [ m* ]
     pull_request:
+      branches: [ m* ]
     workflow_dispatch:
-
+      branches: [ m* ]
 jobs:
-  make_ship:
+  build:
     runs-on: ubuntu-latest
+    env:
+      PDK_ROOT:            /home/runner/work/caravel_template/pdks
+      OPENLANE_ROOT:       /home/runner/work/caravel_template/openlane
+      CARAVEL_ROOT:        /home/runner/work/caravel_template/caravel_template/caravel
+      OPENLANE_IMAGE_NAME: efabless/openlane:mpw-3a
+      OPENLANE_TAG:        2021.12.17_05.07.41
+      CARAVEL_TAG:         mpw-3a
+      MAGIC_VERSION:       8.3.209
     steps:
        - uses: actions/checkout@v2
-      
-       - name: Set up QEMU
-         uses: docker/setup-qemu-action@v1
-
-       - name: Set up Docker Buildx
-         uses: docker/setup-buildx-action@v1
-        
-       - name: Install The PDK
-         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/dv/pdkBuild.sh
-         env: 
-          OPENLANE_TAG:  2021.12.17_05.07.41
-
-       - name: Run make ship
-         run: bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-ship.sh 
-         env: 
-          OPENLANE_TAG:  2021.12.17_05.07.41
-          
-  set_user_id:
-    runs-on: ubuntu-latest
-    steps:
-       - uses: actions/checkout@v2
-      
-       - name: Set up QEMU
-         uses: docker/setup-qemu-action@v1
-
-       - name: Set up Docker Buildx
-         uses: docker/setup-buildx-action@v1
-        
-       - name: Install The PDK
-         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/dv/pdkBuild.sh
-         env: 
-          OPENLANE_TAG:  2021.09.16_03.28.21
-
-       - name: Run Set User ID
-         run: bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-set-id.sh 
-         env: 
-          OPENLANE_TAG:  2021.09.16_03.28.21
-
-  xor_wrapper:
-    runs-on: ubuntu-latest
-    steps:
-       - uses: actions/checkout@v2
-      
-       - name: Set up QEMU
-         uses: docker/setup-qemu-action@v1
-
-       - name: Set up Docker Buildx
-         uses: docker/setup-buildx-action@v1
-        
-       - name: Install The PDK
-         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/dv/pdkBuild.sh
-         env: 
-          OPENLANE_TAG: 2021.09.16_03.28.21
-
-       - name: Run XOR Check
-         run: bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-xor.sh 
-         env: 
-          OPENLANE_TAG:  2021.09.16_03.28.21
+       - name: install deps
+         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-install-magic.sh
+       - name: install caravel
+         run:  bash ${GITHUB_WORKSPACE}/.github/scripts/build/run-pdk-build.sh
+       - name: uncompress
+         run:  make uncompress
+       - name: build user gds
+         run: |
+           cd openlane/
+           docker run -v $OPENLANE_ROOT:/openLANE_flow -v $PDK_ROOT:$PDK_ROOT -v $PWD/..:/project -v $CARAVEL_ROOT:$CARAVEL_ROOT -e PDK_ROOT=$PDK_ROOT -e CARAVEL_ROOT=$CARAVEL_ROOT -u $(id -u $USER):$(id -g $USER) $OPENLANE_IMAGE_NAME sh -c "cd /project/openlane && flow.tcl -design ./user_proj -save_path .. -save -tag user_proj -overwrite"
+           cd -
+       - name: build wrapper gds
+         run: |
+           cd openlane
+           docker run -v $OPENLANE_ROOT:/openLANE_flow -v $PDK_ROOT:$PDK_ROOT -v $PWD/..:/project -v $CARAVEL_ROOT:$CARAVEL_ROOT -e PDK_ROOT=$PDK_ROOT -e CARAVEL_ROOT=$CARAVEL_ROOT -u $(id -u $USER):$(id -g $USER) $OPENLANE_IMAGE_NAME sh -c "cd /project/openlane && flow.tcl -design ./user_project_wrapper -save_path .. -save -tag user_project_wrapper -overwrite"
+           cd -
+       - name: compress
+         run:  make compress
+       - name: push
+         if: github.event_name == 'create' && github.event.ref_type == 'tag' && startsWith(github.event.ref, 't')
+         run: |
+           git add def gds lef mag maglef signoff verilog
+           git config user.email "rbacik@hotmail.com"
+           git config user.name "roman3017"
+           git commit -m "tag action: update build"
+           git push origin HEAD:main
