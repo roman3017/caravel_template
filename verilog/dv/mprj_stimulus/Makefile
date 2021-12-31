@@ -36,8 +36,8 @@ UPRJ_RTL_PATH = $(UPRJ_VERILOG_PATH)/rtl
 UPRJ_BEHAVIOURAL_MODELS = ../
 
 ## RISCV GCC 
-GCC_PATH?=/ef/apps/bin
-GCC_PREFIX?=riscv32-unknown-elf
+GCC_PATH?=/usr/bin
+GCC_PREFIX?=riscv64-unknown-elf
 
 ## Simulation mode: RTL/GL
 SIM_DEFINES = -DFUNCTIONAL -DSIM
